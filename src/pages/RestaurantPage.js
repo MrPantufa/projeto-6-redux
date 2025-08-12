@@ -1,9 +1,10 @@
 // src/pages/RestaurantPage.js
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import Footer from '../components/Footer';
 
+/* ====== ESTILOS ====== */
 const PageContainer = styled.div`
   position: relative;
   width: 1366px;
@@ -69,7 +70,7 @@ const BannerImage = styled.img`
 
 const BannerTitle = styled.h3`
   position: absolute;
-  width: 101px;
+  width: auto;
   height: 33.25px;
   top: 187px;
   left: 170px;
@@ -81,7 +82,7 @@ const BannerTitle = styled.h3`
 
 const RestaurantName = styled.h4`
   position: absolute;
-  width: 676px;
+  width: auto;
   height: 33.25px;
   top: 376.75px;
   left: 170px;
@@ -94,7 +95,6 @@ const RestaurantName = styled.h4`
 const MenuContainer = styled.div`
   position: absolute;
   width: 1024px;
-  height: 708px;
   top: 498px;
   left: 171px;
   background: #FFF;
@@ -105,13 +105,9 @@ const MenuContainer = styled.div`
 const CardsWrapper = styled.div`
   display: grid;
   width: 100%;
-  height: 100%;
   grid-template-columns: repeat(3, 320px);
-  grid-template-rows: repeat(2, 338px);
-  column-gap: 16px;
-  row-gap: 16px;
-  justify-content: space-between;
-  align-content: space-between;
+  grid-auto-rows: 338px;
+  gap: 16px;
 `;
 
 const OrderCard = styled.div`
@@ -149,21 +145,26 @@ const ProductDescription = styled.p`
   font: 400 14px Roboto, sans-serif;
   line-height: 22px;
   color: #FFEDB9;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
 `;
 
 const OrderButtonBar = styled.div`
   position: absolute;
   width: 304px;
   height: 24px;
-  top: 306px;
+  bottom: 8px;
   left: 8px;
   background: #FFEDB9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 `;
 
 const OrderButtonLabel = styled.span`
-  position: absolute;
-  top: 4px;
-  left: 83.24px;
   font: 700 14px Roboto, sans-serif;
   line-height: 16px;
   color: #E66767;
@@ -178,31 +179,93 @@ const FooterWrapper = styled.div`
   left: -1px;
   opacity: 1;
 `;
+/* ====== FIM ESTILOS ====== */
+
+/* Helpers de slug */
+const slugify = (s) =>
+  String(s || '')
+    .toLowerCase()
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+const normalizeSlug = (value) => slugify(decodeURIComponent(String(value || '')));
 
 export default function RestaurantPage() {
-  const { id } = useParams();
+  const params = useParams();
+  const slugParam = normalizeSlug(
+    params.id ||
+      params.slug ||
+      params.restaurant ||
+      params.nome ||
+      params.restaurante ||
+      Object.values(params)[0]
+  );
 
-  // Dados padrões para o italiano
-  let bannerTitle = 'Italiana';
-  let restaurantName = 'La Dolce Vita Trattoria';
-  let cards = Array.from({ length: 6 }).map(() => ({
-    img: '/assets/pizza.png',
-    title: 'Pizza Marguerita',
-    description:
-      'A clássica Marguerita: molho de tomate suculento, mussarela derretida, manjericão fresco e um toque de azeite. Sabor e simplicidade!',
-  }));
+  const [bannerTitle, setBannerTitle] = useState('');
+  const [restaurantName, setRestaurantName] = useState('');
+  const [cards, setCards] = useState([]);
 
-  // Se for o Hioki Sushi (id === 'hioki-sushi'), sobrepor apenas imagem, título e descrição
-  if (id === 'hioki-sushi') {
-    bannerTitle = 'Japonesa';
-    restaurantName = 'Hioki Sushi';
-    cards = Array.from({ length: 6 }).map(() => ({
-      img: '/assets/sushi.png',
-      title: 'Sushi Tradicional',
-      description:
-        'Delicado sushi de salmão fresco com arroz temperado, wasabi e gengibre. Uma explosão de sabor à moda japonesa!',
-    }));
-  }
+  useEffect(() => {
+    let cancel = false;
+
+    async function load() {
+      try {
+        const res = await fetch('https://ebac-fake-api.vercel.app/api/efood/restaurantes');
+        const json = await res.json();
+
+        // A API pode vir como { restaurantes: [...] } ou como []
+        const restaurantes = Array.isArray(json) ? json : json?.restaurantes || [];
+
+        // 1) tenta por r.slug
+        let found =
+          restaurantes.find((r) => r.slug && normalizeSlug(r.slug) === slugParam);
+
+        // 2) tenta por título exato normalizado
+        if (!found) {
+          found = restaurantes.find((r) => normalizeSlug(r.titulo) === slugParam);
+        }
+
+        // 3) tenta "parecido" (includes) — ajuda com variações de hífen/acentos
+        if (!found) {
+          found = restaurantes.find((r) =>
+            normalizeSlug(r.titulo).includes(slugParam)
+          );
+        }
+
+        // 4) fallback: usa o primeiro para não ficar vazio
+        if (!found) {
+          found = restaurantes[0];
+        }
+
+        if (!cancel && found) {
+          setBannerTitle(found.tipo || '');
+          setRestaurantName(found.titulo || '');
+
+          const items = (found.cardapio || []).map((item) => ({
+            img: item.foto,
+            title: item.nome,
+            description: item.descricao
+          }));
+
+          setCards(items);
+        }
+      } catch (e) {
+        if (!cancel) {
+          setBannerTitle('');
+          setRestaurantName('');
+          setCards([]);
+        }
+      }
+    }
+
+    load();
+    return () => {
+      cancel = true;
+    };
+  }, [slugParam]);
 
   return (
     <PageContainer>
@@ -224,7 +287,7 @@ export default function RestaurantPage() {
               <ProductTitle>{title}</ProductTitle>
               <ProductDescription>{description}</ProductDescription>
               <OrderButtonBar>
-                <OrderButtonLabel>Adicionar ao carrinho</OrderButtonLabel>
+                <OrderButtonLabel>Mais Detalhes</OrderButtonLabel>
               </OrderButtonBar>
             </OrderCard>
           ))}
