@@ -1,6 +1,6 @@
 // src/components/RestaurantCard.js
 import React from 'react';
-import { Link } from 'react-router-dom';       // ✅ importe Link
+import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 
 const Card = styled.div`
@@ -10,6 +10,7 @@ const Card = styled.div`
   border: 1px solid #E66767;
   box-sizing: border-box;
   font-family: 'Roboto', sans-serif;
+  background: #FFFFFF;
 `;
 
 const RestaurantImage = styled.img`
@@ -19,18 +20,6 @@ const RestaurantImage = styled.img`
   width: 472px;
   height: 217px;
   object-fit: cover;
-`;
-
-const CardBackground = styled.div`
-  position: absolute;
-  top: 217px;
-  left: 0;
-  width: 472px;
-  height: 181px;
-  background: #FFFFFF;
-  border: 1px solid #E66767;
-  border-top: none;
-  box-sizing: border-box;
 `;
 
 const HighlightBadge = styled.div`
@@ -73,27 +62,28 @@ const CategoryText = styled.span`
 
 const TitleRatingRow = styled.div`
   position: absolute;
-  top: 225px;
+  top: 232px;
   left: 8px;
   width: 456px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
 `;
 
 const Title = styled.h3`
   margin: 0;
-  font-weight: 700;
-  font-size: 18px;
-  line-height: 21px;
+  font-weight: 900;
+  font-size: 16px;
+  line-height: 19px;
   color: #E66767;
 `;
 
 const RatingText = styled.span`
-  font-weight: 900;
+  font-weight: 700;
   font-size: 18px;
   line-height: 21px;
   color: #E66767;
+  margin-right: 4px;
 `;
 
 const Star = styled.img`
@@ -112,11 +102,15 @@ const Description = styled.p`
   font-size: 14px;
   line-height: 22px;
   color: #E66767;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
 `;
 
 const ButtonWrapper = styled.div`
   position: absolute;
-  top: 366px;
+  top: 374px; /* antes 366px: +8px de respiro em relação ao texto */
   left: 8px;
   width: 82px;
   height: 24px;
@@ -134,29 +128,29 @@ const ButtonText = styled.span`
 `;
 
 export default function RestaurantCard({
-  imgSrc = "/assets/sushi.png",
-  title = 'Hioki Sushi',
-  description = '',
-  rating = '0.0',
-  highlightText = 'Destaque',
-  categoryText = '',
-  showHighlight = false,
+  imgSrc,
+  title,
+  description,
+  rating,
+  highlightText,
+  categoryText,
+  slug,
+  showHighlight
 }) {
-  // cria o slug a partir do título
-  const slug = encodeURIComponent(title.replace(/\s+/g, '-').toLowerCase());
-
   return (
     <Card>
       <RestaurantImage src={imgSrc} alt={title} />
-      <CardBackground />
+
       {showHighlight && (
         <HighlightBadge>
-          <HighlightText>{highlightText}</HighlightText>
+          <HighlightText>{highlightText || 'Destaque'}</HighlightText>
         </HighlightBadge>
       )}
+
       <CategoryBadge>
         <CategoryText>{categoryText}</CategoryText>
       </CategoryBadge>
+
       <TitleRatingRow>
         <Title>{title}</Title>
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -164,9 +158,9 @@ export default function RestaurantCard({
           <Star src="/assets/estrela.png" alt="Estrela" />
         </div>
       </TitleRatingRow>
+
       <Description>{description}</Description>
 
-      {/* Aqui envolvemos o botão no Link para /restaurant/:id */}
       <Link to={`/restaurant/${slug}`} style={{ textDecoration: 'none' }}>
         <ButtonWrapper>
           <ButtonText>Saiba mais</ButtonText>
