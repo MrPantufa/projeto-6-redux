@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import Footer from '../components/Footer';
+import { useDispatch, useSelector } from 'react-redux';
+import { CART_ADD, CART_REMOVE } from '../store/cartSlice';
 
-/* ====== ESTILOS ====== */
 const PageContainer = styled.div`
   position: relative;
   width: 1366px;
@@ -21,17 +22,14 @@ const PageHeader = styled.div`
 
 const Logo = styled.img`
   position: absolute;
-  width: 125px;
-  height: 57.5px;
   top: 40px;
-  left: 621px;
+  left: 611px;
+  width: 125px;
+  height: 57px;
 `;
 
 const HeaderLink = styled(Link)`
-  all: unset;
   position: absolute;
-  width: 109px;
-  height: 21px;
   top: 59px;
   left: 171px;
   font-family: 'Roboto', sans-serif;
@@ -51,6 +49,7 @@ const CartStatus = styled.div`
   font-weight: 700;
   font-size: 18px;
   color: #E66767;
+  cursor: pointer;
 `;
 
 const BannerImage = styled.img`
@@ -64,30 +63,30 @@ const BannerImage = styled.img`
 
 const BannerTitle = styled.h1`
   position: absolute;
-  top: 228px;
+  top: 208px;
   left: 171px;
+  margin: 0;
   font-family: 'Roboto', sans-serif;
-  font-weight: 900;
   font-size: 32px;
-  line-height: 38px;
+  font-weight: 900;
   color: #FFFFFF;
-  text-transform: lowercase;
 `;
 
 const MenuContainer = styled.div`
-  position: relative;
+  position: absolute;
   top: 416px;
-  width: 1024px;
-  margin: 0 auto 80px;
+  left: 0;
+  width: 1366px;
 `;
 
 const CardsWrapper = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 320px);
   gap: 32px;
+  width: 1024px;
+  margin: 40px auto 0;
 `;
 
-/* === CARD DE CADA PRATO (MENU) === */
 const OrderCard = styled.div`
   position: relative;
   width: 320px;
@@ -97,6 +96,7 @@ const OrderCard = styled.div`
   padding: 8px;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 `;
 
 const OrderImage = styled.img`
@@ -115,64 +115,61 @@ const OrderTitle = styled.h3`
 `;
 
 const OrderDescription = styled.p`
-  flex: 1;
   font-family: 'Roboto', sans-serif;
   font-size: 14px;
   color: #FFFFFF;
-  line-height: 1.3;
-  overflow: hidden;
+  line-height: 1.4;
+  margin: 0 0 8px 0;
   display: -webkit-box;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
+  overflow: hidden;
 `;
 
-/* BOTÃO PADRÃO DEFINIDO */
 const OrderButtonBar = styled.button`
   width: 304px;
   height: 24px;
+  margin-top: auto;
+  align-self: center;
   background: #FFEBD9;
   color: #E66767;
+  font-family: 'Roboto', sans-serif;
   font-weight: 700;
   font-size: 14px;
-  border: none;
-  cursor: pointer;
+  border: 0;
+  outline: 0;
+  appearance: none;
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
 `;
 
-const OrderButtonLabel = styled.span`
-  font-size: 14px;
-`;
-
-/* ---------- OVERLAY e MODAL ---------- */
 const Overlay = styled.div`
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.7);
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding-top: 120px;
   z-index: 1000;
 `;
 
 const DetailsCard = styled.div`
+  position: absolute;
   width: 1024px;
   min-height: 344px;
   background: #E66767;
-  border: 1px solid #E66767;
-  position: relative;
+  top: 128px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 32px;
   display: grid;
   grid-template-columns: 280px 1fr;
   gap: 24px;
-  padding: 24px;
 `;
 
 const CloseIcon = styled.img`
   position: absolute;
-  top: 8px;
-  right: 8px;
+  right: 16px;
+  top: 16px;
   width: 16px;
   height: 16px;
   cursor: pointer;
@@ -185,8 +182,8 @@ const DetailImage = styled.img`
   background: #fff;
 `;
 
-const DetailTitle = styled.h3`
-  margin: 0 0 8px;
+const DetailTitle = styled.h2`
+  margin: 0 0 8px 0;
   font-family: 'Roboto', sans-serif;
   font-weight: 900;
   font-size: 18px;
@@ -207,7 +204,6 @@ const DetailServe = styled.p`
   color: #FFFFFF;
 `;
 
-/* BOTÃO DO MODAL NO PADRÃO DEFINIDO */
 const AddToCartButton = styled.button`
   width: 304px;
   height: 24px;
@@ -226,8 +222,131 @@ const FooterWrapper = styled.div`
   margin: 80px 0;
 `;
 
-/* ====== HELPERS ====== */
-// helper simples para formatar em Real
+const CartOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 2000;
+`;
+
+const CartPanel = styled.div`
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 360px;
+  height: 1624px;
+  background: #E66767;
+  opacity: 1;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+`;
+
+const CartList = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 32px;
+`;
+
+const CartItem = styled.div`
+  position: relative;
+  width: 344px;
+  height: 100px;
+  background: #FFEBD9;
+  border: 1px solid #F0C6B6;
+  padding: 8px;
+`;
+
+const CartThumb = styled.img`
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  top: 8px;
+  left: 16px;
+  object-fit: cover;
+`;
+
+const CartName = styled.div`
+  position: absolute;
+  width: 140px;
+  height: 21px;
+  top: 8px;
+  left: 104px;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 900;
+  font-size: 18px;
+  line-height: 18px;
+  color: #E66767;
+  text-align: center;
+  white-space: normal;
+  word-break: break-word;
+  overflow: hidden;
+`;
+
+const CartPrice = styled.div`
+  position: absolute;
+  width: 67px;
+  height: 22px;
+  top: 64px;
+  left: 104px;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 22px;
+  color: #E66767;
+`;
+
+const TrashIcon = styled.img`
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  top: 76px;
+  right: 16px;
+  opacity: 1;
+  cursor: pointer;
+  user-select: none;
+`;
+
+const CartTotalRow = styled.div`
+  position: absolute;
+  width: 344px;
+  height: 16px;
+  left: 8px;
+  background: #E66767;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 16px;
+  color: #FFEBD9;
+`;
+
+const ProceedButton = styled.button`
+  position: absolute;
+  width: 344px;
+  height: 24px;
+  left: 8px;
+  background: #FFEBD9;
+  opacity: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 100%;
+  color: #E66767;
+  border: none;
+  outline: 0;
+  cursor: pointer;
+`;
+
 const toBRL = (v) =>
   typeof v === 'number'
     ? v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -249,6 +368,37 @@ export default function RestaurantPage() {
   const [bannerTitle, setBannerTitle] = useState('');
   const [cards, setCards] = useState([]);
   const [openIndex, setOpenIndex] = useState(null);
+  const [cartOpen, setCartOpen] = useState(false);
+
+  // Redux (seletores com guard para evitar crash)
+  const dispatch = useDispatch();
+  const cartItems = useSelector((state) => state.cart?.items ?? []);
+  const cartTotal = useSelector((state) =>
+    (state.cart?.items ?? []).reduce((s, it) => s + (it.priceNumber || 0), 0)
+  );
+
+  function handleMoreDetails(index) {
+    setOpenIndex(index);
+  }
+
+  function removeFromCart(idx) {
+    dispatch({ type: CART_REMOVE, payload: idx });
+  }
+
+  function handleAddToCartFromModal() {
+    if (openIndex === null) return;
+    const item = cards[openIndex];
+    if (!item) return;
+    dispatch({ type: CART_ADD, payload: item });
+    setOpenIndex(null);
+    setCartOpen(true);
+  }
+
+  // posicionamento sem sobrepor os cards
+  const BASE_TOP = 404;
+  const ITEM_STRIDE = 114; // 100 altura + 2 bordas + 12 gap
+  const totalTop = BASE_TOP + Math.max(0, cartItems.length - 3) * ITEM_STRIDE;
+  const buttonTop = totalTop + 32;
 
   useEffect(() => {
     async function load() {
@@ -256,7 +406,8 @@ export default function RestaurantPage() {
         const res = await fetch('https://ebac-fake-api.vercel.app/api/efood/restaurantes');
         const json = await res.json();
         const restaurantes = Array.isArray(json) ? json : json?.restaurantes || [];
-        let found = restaurantes.find((r) => normalizeSlug(r.slug) === slugParam) || restaurantes[0];
+        let found =
+          restaurantes.find((r) => normalizeSlug(r.slug) === slugParam) || restaurantes[0];
 
         if (found) {
           setBannerTitle(found.tipo || '');
@@ -283,7 +434,9 @@ export default function RestaurantPage() {
       <PageHeader>
         <Logo src="/assets/logo.png" alt="logo" />
         <HeaderLink to="/">Restaurantes</HeaderLink>
-        <CartStatus>0 produto(s) no carrinho</CartStatus>
+        <CartStatus onClick={() => setCartOpen(true)}>
+          {cartItems.length} produto(s) no carrinho
+        </CartStatus>
       </PageHeader>
 
       <BannerImage src="/assets/imagemfundo.png" alt="banner" />
@@ -296,8 +449,8 @@ export default function RestaurantPage() {
               <OrderImage src={c.img} alt={c.title} />
               <OrderTitle>{c.title}</OrderTitle>
               <OrderDescription>{c.description}</OrderDescription>
-              <OrderButtonBar onClick={() => setOpenIndex(i)}>
-                <OrderButtonLabel>Adicionar ao carrinho</OrderButtonLabel>
+              <OrderButtonBar onClick={() => handleMoreDetails(i)}>
+                Mais detalhes
               </OrderButtonBar>
             </OrderCard>
           ))}
@@ -314,7 +467,7 @@ export default function RestaurantPage() {
               <DetailDescription>{cards[openIndex]?.description || ''}</DetailDescription>
               <DetailServe>{cards[openIndex]?.serve}</DetailServe>
               <div style={{ marginTop: 16 }}>
-                <AddToCartButton>
+                <AddToCartButton onClick={handleAddToCartFromModal}>
                   Adicionar ao carrinho
                   {cards[openIndex]?.priceText ? ` - ${cards[openIndex].priceText}` : ''}
                 </AddToCartButton>
@@ -322,6 +475,36 @@ export default function RestaurantPage() {
             </div>
           </DetailsCard>
         </Overlay>
+      )}
+
+      {cartOpen && (
+        <CartOverlay onClick={() => setCartOpen(false)}>
+          <CartPanel onClick={(e) => e.stopPropagation()}>
+            <CartList>
+              {cartItems.map((it, idx) => (
+                <CartItem key={idx}>
+                  <CartThumb src={it.img} alt={it.title} />
+                  <CartName>{it.title}</CartName>
+                  <CartPrice>{it.priceText}</CartPrice>
+                  <TrashIcon
+                    src="/assets/lixeira.png"
+                    alt="Remover"
+                    onClick={() => removeFromCart(idx)}
+                  />
+                </CartItem>
+              ))}
+            </CartList>
+
+            <CartTotalRow style={{ top: totalTop }}>
+              <span>Valor total</span>
+              <span>{toBRL(cartTotal)}</span>
+            </CartTotalRow>
+
+            <ProceedButton style={{ top: buttonTop }}>
+              Continuar com a entrega
+            </ProceedButton>
+          </CartPanel>
+        </CartOverlay>
       )}
 
       <FooterWrapper>
