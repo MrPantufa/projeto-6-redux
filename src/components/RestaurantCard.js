@@ -110,10 +110,10 @@ const Description = styled.p`
 
 const ButtonWrapper = styled.div`
   position: absolute;
-  top: 374px; /* antes 366px: +8px de respiro em relação ao texto */
-  left: 8px;
-  width: 82px;
-  height: 24px;
+  left: 16px;        /* alinhamento conforme Figma */
+  bottom: 16px;      /* fixa no rodapé do card */
+  width: 82px;       /* conforme Figma */
+  height: 24px;      /* conforme Figma */
   background: #E66767;
   display: flex;
   align-items: center;

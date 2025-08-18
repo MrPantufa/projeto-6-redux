@@ -7,7 +7,8 @@ import { CART_ADD, CART_REMOVE } from '../store/cartSlice';
 
 const PageContainer = styled.div`
   position: relative;
-  width: 1366px;
+  width: 100%;
+  max-width: 1366px;
   margin: 0 auto;
   background: #FFF8F2;
   min-height: 1624px;
@@ -15,9 +16,19 @@ const PageContainer = styled.div`
 
 const PageHeader = styled.div`
   position: relative;
-  width: 1366px;
+
+  /* full-bleed: ocupa 100% da viewport */
+  width: 100vw;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+
   height: 136px;
-  background: url('/assets/fundo.png') no-repeat center/cover;
+
+  /* pattern deve repetir (não cover) */
+  background: url('/assets/fundo.png') top center repeat;
+  background-size: auto;
 `;
 
 const Logo = styled.img`
@@ -54,10 +65,14 @@ const CartStatus = styled.div`
 
 const BannerImage = styled.img`
   position: absolute;
-  width: 1366px;
+
+  /* full-bleed para o banner */
+  width: 100vw;
+  left: 50%;
+  margin-left: -50vw;
+
   height: 280px;
   top: 136px;
-  left: 0;
   object-fit: cover;
 `;
 
@@ -76,7 +91,7 @@ const MenuContainer = styled.div`
   position: absolute;
   top: 416px;
   left: 0;
-  width: 1366px;
+  width: 100%;
 `;
 
 const CardsWrapper = styled.div`
@@ -230,25 +245,30 @@ const CartOverlay = styled.div`
 `;
 
 const CartPanel = styled.div`
-  position: absolute;
+  position: fixed;
   top: 0;
   right: 0;
   width: 360px;
-  height: 1624px;
+  height: 100vh;
   background: #E66767;
   opacity: 1;
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  overflow: auto; /* permite rolar quando ficar muito cheio */
 `;
 
 const CartList = styled.div`
-  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 12px;
   padding-top: 32px;
+`;
+
+const Spacer = styled.div`
+  width: 1px; /* não ocupa largura; só altura */
+  height: ${(p) => p.h || 0}px;
 `;
 
 const CartItem = styled.div`
@@ -311,10 +331,8 @@ const TrashIcon = styled.img`
 `;
 
 const CartTotalRow = styled.div`
-  position: absolute;
   width: 344px;
   height: 16px;
-  left: 8px;
   background: #E66767;
   display: flex;
   align-items: center;
@@ -328,10 +346,9 @@ const CartTotalRow = styled.div`
 `;
 
 const ProceedButton = styled.button`
-  position: absolute;
   width: 344px;
   height: 24px;
-  left: 8px;
+  margin-top: 8px;
   background: #FFEBD9;
   opacity: 1;
   display: flex;
@@ -370,7 +387,7 @@ export default function RestaurantPage() {
   const [openIndex, setOpenIndex] = useState(null);
   const [cartOpen, setCartOpen] = useState(false);
 
-  // Redux (seletores com guard para evitar crash)
+  // Redux
   const dispatch = useDispatch();
   const cartItems = useSelector((state) => state.cart?.items ?? []);
   const cartTotal = useSelector((state) =>
@@ -394,11 +411,30 @@ export default function RestaurantPage() {
     setCartOpen(true);
   }
 
-  // posicionamento sem sobrepor os cards
+  
   const BASE_TOP = 404;
-  const ITEM_STRIDE = 114; // 100 altura + 2 bordas + 12 gap
-  const totalTop = BASE_TOP + Math.max(0, cartItems.length - 3) * ITEM_STRIDE;
-  const buttonTop = totalTop + 32;
+
+  
+  const ITEM_HEIGHT = 100;
+  const ITEM_BORDER_Y = 2;  
+  const ITEM_GAP = 12;
+
+  
+  const PANEL_PAD_TOP = 16;
+  const LIST_PAD_TOP = 32;
+
+  const n = cartItems.length;
+  const listHeight =
+    n > 0
+      ? n * (ITEM_HEIGHT + ITEM_BORDER_Y) + Math.max(0, n - 1) * ITEM_GAP
+      : 0;
+
+  
+  const spacerHeight = Math.max(
+    0,
+    BASE_TOP - (PANEL_PAD_TOP + LIST_PAD_TOP) - listHeight
+  );
+  // ------------------------------------------------------------
 
   useEffect(() => {
     async function load() {
@@ -495,12 +531,15 @@ export default function RestaurantPage() {
               ))}
             </CartList>
 
-            <CartTotalRow style={{ top: totalTop }}>
+            {/* Espaço dinâmico: garante a posição base e faz descer conforme entram itens */}
+            <Spacer h={spacerHeight} />
+
+            <CartTotalRow>
               <span>Valor total</span>
               <span>{toBRL(cartTotal)}</span>
             </CartTotalRow>
 
-            <ProceedButton style={{ top: buttonTop }}>
+            <ProceedButton>
               Continuar com a entrega
             </ProceedButton>
           </CartPanel>
