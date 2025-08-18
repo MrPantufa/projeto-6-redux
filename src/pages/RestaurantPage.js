@@ -34,10 +34,14 @@ const PageHeader = styled.div`
 const Logo = styled.img`
   position: absolute;
   top: 40px;
-  left: 611px;
+  left: calc((100vw - 1366px) / 2 + 621px);
   width: 125px;
-  height: 57px;
+  height: 57.5px;
 `;
+
+
+
+
 
 const HeaderLink = styled(Link)`
   position: absolute;
