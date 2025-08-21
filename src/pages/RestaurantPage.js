@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import Footer from '../components/Footer';
 import { useDispatch, useSelector } from 'react-redux';
@@ -38,10 +38,6 @@ const Logo = styled.img`
   width: 125px;
   height: 57.5px;
 `;
-
-
-
-
 
 const HeaderLink = styled(Link)`
   position: absolute;
@@ -103,7 +99,7 @@ const CardsWrapper = styled.div`
   grid-template-columns: repeat(3, 320px);
   gap: 32px;
   width: 1024px;
-  margin: 40px auto 0;
+  margin: 82px auto 0; /* ajustado p/ top 498px */
 `;
 
 const OrderCard = styled.div`
@@ -130,14 +126,14 @@ const OrderTitle = styled.h3`
   font-family: 'Roboto', sans-serif;
   font-weight: 900;
   font-size: 16px;
-  color: #FFFFFF;
+  color: #FFEBD9; /* solicitado */
 `;
 
 const OrderDescription = styled.p`
   font-family: 'Roboto', sans-serif;
   font-size: 14px;
-  color: #FFFFFF;
-  line-height: 1.4;
+  line-height: 22px;
+  color: #FFEBD9;  /* solicitado */
   margin: 0 0 8px 0;
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -214,13 +210,13 @@ const DetailDescription = styled.p`
   font-family: 'Roboto', sans-serif;
   font-size: 14px;
   color: #FFFFFF;
-  line-height: 1.4;
+  line-height: 22px;
 `;
 
 const DetailServe = styled.p`
   margin-top: 8px;
   font-size: 14px;
-  color: #FFFFFF;
+  color: #FFEBD9;
 `;
 
 const AddToCartButton = styled.button`
@@ -260,7 +256,18 @@ const CartPanel = styled.div`
   display: flex;
   flex-direction: column;
   gap: 16px;
-  overflow: auto; /* permite rolar quando ficar muito cheio */
+  overflow: auto;
+
+  a, b, strong, em, span, div {
+    text-decoration: none !important;
+    border: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+  }
+  a::after, a::before {
+    content: none !important;
+    display: none !important;
+  }
 `;
 
 const CartList = styled.div`
@@ -282,6 +289,7 @@ const CartItem = styled.div`
   background: #FFEBD9;
   border: 1px solid #F0C6B6;
   padding: 8px;
+  text-decoration: none;
 `;
 
 const CartThumb = styled.img`
@@ -304,10 +312,14 @@ const CartName = styled.div`
   font-size: 18px;
   line-height: 18px;
   color: #E66767;
-  text-align: center;
-  white-space: normal;
-  word-break: break-word;
+  text-align: left;
+
+  /* evita a 2ª linha “aparecer cortada” */
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
+
+  word-break: normal;
 `;
 
 const CartPrice = styled.div`
@@ -368,6 +380,26 @@ const ProceedButton = styled.button`
   cursor: pointer;
 `;
 
+/* ---------- NOVO: overlay e painel de entrega ---------- */
+const DeliveryOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6); /* escurece sem esconder o fundo */
+  z-index: 3000; /* acima do carrinho (2000) */
+`;
+
+const DeliveryPanel = styled.div`
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 360px;
+  height: 100%;
+  background: #E66767;
+  padding: 16px;
+  overflow: auto;
+`;
+/* ------------------------------------------------------ */
+
 const toBRL = (v) =>
   typeof v === 'number'
     ? v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -383,6 +415,8 @@ function normalizeSlug(v = '') {
 }
 
 export default function RestaurantPage() {
+  const navigate = useNavigate(); // <- mantido
+
   const params = useParams();
   const slugParam = normalizeSlug(Object.values(params)[0]);
 
@@ -390,6 +424,26 @@ export default function RestaurantPage() {
   const [cards, setCards] = useState([]);
   const [openIndex, setOpenIndex] = useState(null);
   const [cartOpen, setCartOpen] = useState(false);
+  const [deliveryOpen, setDeliveryOpen] = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [confirmationOpen, setConfirmationOpen] = useState(false);
+
+  // NOVO: estados dos formulários (não alteram visual)
+  const [receiver, setReceiver] = useState('');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [zip, setZip] = useState('');
+  const [number, setNumber] = useState('');
+  const [complement, setComplement] = useState('');
+
+  const [cardName, setCardName] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+  const [cvv, setCvv] = useState('');
+  const [expMonth, setExpMonth] = useState('');
+  const [expYear, setExpYear] = useState('');
+
+  const [isPaying, setIsPaying] = useState(false);
+  const [orderId, setOrderId] = useState('');
 
   // Redux
   const dispatch = useDispatch();
@@ -415,15 +469,12 @@ export default function RestaurantPage() {
     setCartOpen(true);
   }
 
-  
   const BASE_TOP = 404;
 
-  
   const ITEM_HEIGHT = 100;
-  const ITEM_BORDER_Y = 2;  
+  const ITEM_BORDER_Y = 2;
   const ITEM_GAP = 12;
 
-  
   const PANEL_PAD_TOP = 16;
   const LIST_PAD_TOP = 32;
 
@@ -433,12 +484,10 @@ export default function RestaurantPage() {
       ? n * (ITEM_HEIGHT + ITEM_BORDER_Y) + Math.max(0, n - 1) * ITEM_GAP
       : 0;
 
-  
   const spacerHeight = Math.max(
     0,
     BASE_TOP - (PANEL_PAD_TOP + LIST_PAD_TOP) - listHeight
   );
-  // ------------------------------------------------------------
 
   useEffect(() => {
     async function load() {
@@ -457,7 +506,8 @@ export default function RestaurantPage() {
             description: item.descricao || '',
             serve: item.porcao || 'Serve: de 2 a 3 pessoas',
             priceNumber: typeof item.preco === 'number' ? item.preco : null,
-            priceText: typeof item.preco === 'number' ? toBRL(item.preco) : ''
+            priceText: typeof item.preco === 'number' ? toBRL(item.preco) : '',
+            id: item.id ?? item.nome // mantém um id lógico caso exista
           }));
           setCards(items);
         }
@@ -468,6 +518,60 @@ export default function RestaurantPage() {
     }
     load();
   }, [slugParam]);
+
+  // NOVO: integração com a API de checkout (sem mudar visual)
+  async function finalizePayment() {
+    if (isPaying) return; // evita duplo clique sem mexer em estilos
+    try {
+      setIsPaying(true);
+
+      const products = (cartItems || []).map((it, idx) => ({
+        id: it.id ?? it.title ?? String(idx),
+        price: it.priceNumber ?? 0
+      }));
+
+      const payload = {
+        products,
+        delivery: {
+          receiver,
+          address,
+          city,
+          zip,
+          number,
+          complement
+        },
+        payment: {
+          card: {
+            name: cardName,
+            number: cardNumber,
+            code: cvv,
+            expires: { month: expMonth, year: expYear }
+          }
+        }
+      };
+
+      const resp = await fetch('https://ebac-fake-api.vercel.app/api/efood/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!resp.ok) {
+        throw new Error('Checkout falhou');
+      }
+
+      const data = await resp.json().catch(() => ({}));
+      setOrderId(data.orderId || data.id || '');
+
+      // fluxo visual já existente: fecha pagamento e abre confirmação
+      setPaymentOpen(false);
+      setConfirmationOpen(true);
+    } catch (err) {
+      alert('Não foi possível finalizar o pagamento. Tente novamente.');
+    } finally {
+      setIsPaying(false);
+    }
+  }
 
   return (
     <PageContainer>
@@ -490,7 +594,7 @@ export default function RestaurantPage() {
               <OrderTitle>{c.title}</OrderTitle>
               <OrderDescription>{c.description}</OrderDescription>
               <OrderButtonBar onClick={() => handleMoreDetails(i)}>
-                Mais detalhes
+                Adicionar ao carrinho
               </OrderButtonBar>
             </OrderCard>
           ))}
@@ -535,7 +639,6 @@ export default function RestaurantPage() {
               ))}
             </CartList>
 
-            {/* Espaço dinâmico: garante a posição base e faz descer conforme entram itens */}
             <Spacer h={spacerHeight} />
 
             <CartTotalRow>
@@ -543,11 +646,289 @@ export default function RestaurantPage() {
               <span>{toBRL(cartTotal)}</span>
             </CartTotalRow>
 
-            <ProceedButton>
+            <ProceedButton onClick={() => setDeliveryOpen(true)}>
               Continuar com a entrega
             </ProceedButton>
           </CartPanel>
         </CartOverlay>
+      )}
+
+      {/* ENTREGA */}
+      {deliveryOpen && (
+        <DeliveryOverlay onClick={() => setDeliveryOpen(false)}>
+          <DeliveryPanel onClick={(e) => e.stopPropagation()}>
+            <h3
+              style={{
+                color: '#FFEBD9',
+                fontFamily: 'Roboto',
+                margin: 0,
+                fontSize: 16,
+                fontWeight: 700
+              }}
+            >
+              Entrega
+            </h3>
+
+            <label style={{display:'block',color:'#FFEBD9',fontWeight:700,fontFamily:'Roboto',fontSize:14,marginTop:16}}>Quem irá receber</label>
+            <input
+              style={{display:'block',width:'100%',height:32,marginTop:8,background:'#FFEBD9',border:'none',paddingLeft:10,
+                color:'#4B4B4B',fontFamily:'Roboto',fontWeight:700,fontSize:'14px',lineHeight:'100%',letterSpacing:0}}
+              value={receiver}
+              onChange={(e)=>setReceiver(e.target.value)}
+            />
+
+            <label style={{display:'block',color:'#FFEBD9',fontWeight:700,fontFamily:'Roboto',fontSize:14,marginTop:16}}>Endereço</label>
+            <input
+              style={{display:'block',width:'100%',height:32,marginTop:8,background:'#FFEBD9',border:'none',paddingLeft:10,
+                color:'#4B4B4B',fontFamily:'Roboto',fontWeight:700,fontSize:'14px',lineHeight:'100%',letterSpacing:0}}
+              value={address}
+              onChange={(e)=>setAddress(e.target.value)}
+            />
+
+            <label style={{display:'block',color:'#FFEBD9',fontWeight:700,fontFamily:'Roboto',fontSize:14,marginTop:16}}>Cidade</label>
+            <input
+              style={{display:'block',width:'100%',height:32,marginTop:8,background:'#FFEBD9',border:'none',paddingLeft:10,
+                color:'#4B4B4B',fontFamily:'Roboto',fontWeight:700,fontSize:'14px',lineHeight:'100%',letterSpacing:0}}
+              value={city}
+              onChange={(e)=>setCity(e.target.value)}
+            />
+
+            <div style={{display:'flex',gap:31,marginTop:0}}>
+              <div style={{flex:1}}>
+                <label style={{display:'block',color:'#FFEBD9',fontWeight:700,fontFamily:'Roboto',fontSize:14,marginTop:16}}>CEP</label>
+                <input
+                  style={{display:'block',width:'100%',height:32,marginTop:8,background:'#FFEBD9',border:'none',paddingLeft:10,
+                    color:'#4B4B4B',fontFamily:'Roboto',fontWeight:700,fontSize:'14px',lineHeight:'100%',letterSpacing:0}}
+                  value={zip}
+                  onChange={(e)=>setZip(e.target.value)}
+                />
+              </div>
+              <div style={{flex:1}}>
+                <label style={{display:'block',color:'#FFEBD9',fontWeight:700,fontFamily:'Roboto',fontSize:14,marginTop:16}}>Número</label>
+                <input
+                  style={{display:'block',width:'100%',height:32,marginTop:8,background:'#FFEBD9',border:'none',paddingLeft:10,
+                    color:'#4B4B4B',fontFamily:'Roboto',fontWeight:700,fontSize:'14px',lineHeight:'100%',letterSpacing:0}}
+                  value={number}
+                  onChange={(e)=>setNumber(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <label style={{display:'block',color:'#FFEBD9',fontWeight:700,fontFamily:'Roboto',fontSize:14,marginTop:16}}>Complemento (opcional)</label>
+            <input
+              style={{display:'block',width:'100%',height:32,marginTop:8,background:'#FFEBD9',border:'none',paddingLeft:10,
+                color:'#4B4B4B',fontFamily:'Roboto',fontWeight:700,fontSize:'14px',lineHeight:'100%',letterSpacing:0}}
+              value={complement}
+              onChange={(e)=>setComplement(e.target.value)}
+            />
+
+            <button
+              onClick={() => { setDeliveryOpen(false); setPaymentOpen(true); }}
+              style={{
+                width:'100%',
+                marginTop:16,
+                background:'#FFEBD9',
+                color:'#E66767',
+                border:'none',
+                padding:'8px 12px',
+                fontFamily:'Roboto',
+                fontWeight:700,
+                fontSize:'14px',
+                lineHeight:'16px',
+                letterSpacing:0,
+                textAlign:'center',
+                cursor:'pointer'
+              }}
+            >
+              Continuar com o pagamento
+            </button>
+
+            <button
+              onClick={() => setDeliveryOpen(false)}
+              style={{
+                width:'100%',
+                marginTop:16,
+                background:'#FFEBD9',
+                color:'#E66767',
+                border:'none',
+                padding:'8px 12px',
+                fontFamily:'Roboto',
+                fontWeight:700,
+                fontSize:'14px',
+                lineHeight:'16px',
+                letterSpacing:0,
+                textAlign:'center',
+                cursor:'pointer'
+              }}
+            >
+              Voltar para o carrinho
+            </button>
+          </DeliveryPanel>
+        </DeliveryOverlay>
+      )}
+
+      {/* PAGAMENTO */}
+      {paymentOpen && (
+        <DeliveryOverlay onClick={() => setPaymentOpen(false)}>
+          <DeliveryPanel onClick={(e) => e.stopPropagation()}>
+            <h3
+              style={{
+                color: '#FFEBD9',
+                fontFamily: 'Roboto',
+                margin: 0,
+                fontSize: 16,
+                fontWeight: 700
+              }}
+            >
+              {`Pagamento - Valor a pagar ${toBRL(cartTotal)}`}
+            </h3>
+
+            <label style={{display:'block',color:'#FFEBD9',fontWeight:700,fontFamily:'Roboto',fontSize:14,marginTop:16}}>Nome no cartão</label>
+            <input
+              style={{display:'block',width:'100%',height:32,marginTop:8,background:'#FFEBD9',border:'none',paddingLeft:10,
+                color:'#4B4B4B',fontFamily:'Roboto',fontWeight:700,fontSize:'14px',lineHeight:'100%',letterSpacing:0}}
+              value={cardName}
+              onChange={(e)=>setCardName(e.target.value)}
+            />
+
+            <div style={{display:'flex',gap:31,marginTop:0}}>
+              <div style={{flex:1}}>
+                <label style={{display:'block',color:'#FFEBD9',fontWeight:700,fontFamily:'Roboto',fontSize:14,marginTop:16}}>Número do cartão</label>
+                <input
+                  style={{display:'block',width:'100%',height:32,marginTop:8,background:'#FFEBD9',border:'none',paddingLeft:10,
+                    color:'#4B4B4B',fontFamily:'Roboto',fontWeight:700,fontSize:'14px',lineHeight:'100%',letterSpacing:0}}
+                  value={cardNumber}
+                  onChange={(e)=>setCardNumber(e.target.value)}
+                />
+              </div>
+              <div style={{width:120}}>
+                <label style={{display:'block',color:'#FFEBD9',fontWeight:700,fontFamily:'Roboto',fontSize:14,marginTop:16}}>CVV</label>
+                <input
+                  style={{display:'block',width:'100%',height:32,marginTop:8,background:'#FFEBD9',border:'none',paddingLeft:10,
+                    color:'#4B4B4B',fontFamily:'Roboto',fontWeight:700,fontSize:'14px',lineHeight:'100%',letterSpacing:0}}
+                  value={cvv}
+                  onChange={(e)=>setCvv(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div style={{display:'flex',gap:31,marginTop:0}}>
+              <div style={{flex:1}}>
+                <label style={{display:'block',color:'#FFEBD9',fontWeight:700,fontFamily:'Roboto',fontSize:14,marginTop:16}}>Mês de vencimento</label>
+                <input
+                  style={{display:'block',width:'100%',height:32,marginTop:8,background:'#FFEBD9',border:'none',paddingLeft:10,
+                    color:'#4B4B4B',fontFamily:'Roboto',fontWeight:700,fontSize:'14px',lineHeight:'100%',letterSpacing:0}}
+                  value={expMonth}
+                  onChange={(e)=>setExpMonth(e.target.value)}
+                />
+              </div>
+              <div style={{flex:1}}>
+                <label style={{display:'block',color:'#FFEBD9',fontWeight:700,fontFamily:'Roboto',fontSize:14,marginTop:16}}>Ano de vencimento</label>
+                <input
+                  style={{display:'block',width:'100%',height:32,marginTop:8,background:'#FFEBD9',border:'none',paddingLeft:10,
+                    color:'#4B4B4B',fontFamily:'Roboto',fontWeight:700,fontSize:'14px',lineHeight:'100%',letterSpacing:0}}
+                  value={expYear}
+                  onChange={(e)=>setExpYear(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={finalizePayment}
+              style={{
+                width:'100%',
+                marginTop:16,
+                background:'#FFEBD9',
+                color:'#E66767',
+                border:'none',
+                padding:'8px 12px',
+                fontFamily:'Roboto',
+                fontWeight:700,
+                fontSize:'14px',
+                lineHeight:'16px',
+                letterSpacing:0,
+                textAlign:'center',
+                cursor:'pointer'
+              }}
+            >
+              Finalizar pagamento
+            </button>
+
+            <button
+              onClick={() => { setPaymentOpen(false); setDeliveryOpen(true); }}
+              style={{
+                width:'100%',
+                marginTop:16,
+                background:'#FFEBD9',
+                color:'#E66767',
+                border:'none',
+                padding:'8px 12px',
+                fontFamily:'Roboto',
+                fontWeight:700,
+                fontSize:'14px',
+                lineHeight:'16px',
+                letterSpacing:0,
+                textAlign:'center',
+                cursor:'pointer'
+              }}
+            >
+              Voltar para a edição de endereço
+            </button>
+          </DeliveryPanel>
+        </DeliveryOverlay>
+      )}
+
+      {/* CONFIRMAÇÃO */}
+      {confirmationOpen && (
+        <DeliveryOverlay onClick={() => setConfirmationOpen(false)}>
+          <DeliveryPanel onClick={(e) => e.stopPropagation()}>
+            <h3
+              style={{
+                color: '#FFEBD9',
+                fontFamily: 'Roboto',
+                margin: 0,
+                fontSize: 16,
+                fontWeight: 700
+              }}
+            >
+              {`Pedido realizado - ${orderId || '{ORDER_ID}'}`}
+            </h3>
+
+            <p style={{color:'#FFEBD9',fontFamily:'Roboto',fontSize:14,lineHeight:'22px',margin:'16px 0 0 0'}}>
+              Estamos felizes em informar que seu pedido já está em processo de preparação e, em breve, será entregue no endereço fornecido.
+            </p>
+            <p style={{color:'#FFEBD9',fontFamily:'Roboto',fontSize:14,lineHeight:'22px',margin:'16px 0 0 0'}}>
+              Gostaríamos de ressaltar que nossos entregadores não estão autorizados a realizar cobranças extras.
+            </p>
+            <p style={{color:'#FFEBD9',fontFamily:'Roboto',fontSize:14,lineHeight:'22px',margin:'16px 0 0 0'}}>
+              Lembre-se da importância de higienizar as mãos após o recebimento do pedido, garantindo assim sua segurança e bem-estar durante a refeição.
+            </p>
+            <p style={{color:'#FFEBD9',fontFamily:'Roboto',fontSize:14,lineHeight:'22px',margin:'16px 0 0 0'}}>
+              Esperamos que desfrute de uma deliciosa e agradável experiência gastronômica. Bom apetite!
+            </p>
+
+            <button
+              onClick={() => setConfirmationOpen(false)}
+              style={{
+                width:'100%',
+                marginTop:16,
+                background:'#FFEBD9',
+                color:'#E66767',
+                border:'none',
+                padding:'8px 12px',
+                fontFamily:'Roboto',
+                fontWeight:700,
+                fontSize:'14px',
+                lineHeight:'16px',
+                letterSpacing:0,
+                textAlign:'center',
+                cursor:'pointer'
+              }}
+            >
+              Concluir
+            </button>
+          </DeliveryPanel>
+        </DeliveryOverlay>
       )}
 
       <FooterWrapper>

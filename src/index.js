@@ -1,15 +1,12 @@
+// src/index.js
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
-import { store } from './store';
 import App from './App';
+import { store } from './store'; // <-- IMPORT NOMEADO (corrige o erro do build)
 
-// (opcional para checar rapidamente)
-// console.log('initial state', store.getState()); // esperado: { cart: { items: [] } }
-
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(
+ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <Provider store={store}>
       <BrowserRouter>
